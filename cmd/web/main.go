@@ -6,12 +6,14 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"snippetbox.jgrecu.eu/internal/models"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 type application struct {
-	logger *slog.Logger
+	logger   *slog.Logger
+	snippets *models.SnippetModel
 }
 
 func main() {
@@ -30,7 +32,8 @@ func main() {
 	defer db.Close()
 
 	app := &application{
-		logger: logger,
+		logger:   logger,
+		snippets: &models.SnippetModel{DB: db},
 	}
 
 	logger.Info("starting server", "addr", *addr)
