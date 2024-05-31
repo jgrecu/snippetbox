@@ -1,36 +1,31 @@
 # docker compose file for postgres and pgadmin
 services:
-  postgres:
-    container_name: postgres
-    image: postgres
+  mysql:
+    image: mysql:latest
+    container_name: mysql
     environment:
-      POSTGRES_USER: user
-      POSTGRES_NAME: postgres
-      POSTGRES_PASSWORD: password
-      PGDATA: /data/postgres
-    volumes:
-      - postgres:/data/postgres
+      #MYSQL_DATABASE: "db"
+      # So you don't have to use root, but you can if you like
+      #MYSQL_USER: "user"
+      # You can use whatever password you like
+      #MYSQL_PASSWORD: "password"
+      # Password for root access
+      MYSQL_ROOT_PASSWORD: "password"
     ports:
-      - "5432:5432"
+      # <Port exposed> : < MySQL Port running inside container>
+      - "3306:3306"
+    expose:
+      # Opens port 3306 on the container
+      - "3306"
+      # Where our data will be persisted
+    volumes:
+      - mysql:/var/lib/mysql
     networks:
-      - postgres
+      - mysql
     restart: unless-stopped
-  # pgadmin:
-  #   container_name: pgadmin
-  #   image: dpage/pgadmin4
-  #   environment:
-  #     PGADMIN_DEFAULT_EMAIL: pgadmin4@pgadmin.org
-  #     PGADMIN_DEFAULT_PASSWORD: admin
-  #     PGADMIN_CONFIG_SERVER_MODE: 'False'
-  #   volumes:
-  #     - pgadmin:/var/lib/pgadmin
-  #   ports:
-  #     - "5050:80"
-  #   networks:
-  #     - postgres
-  #   restart: unless-stopped
+
 networks:
-  postgres:
+  mysql:
     driver: bridge
 volumes:
-  postgres:
+  mysql:
