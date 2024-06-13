@@ -46,3 +46,15 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON snippetbox.* TO 'web'@'%';
 ALTER USER 'web'@'%' IDENTIFIED BY 'pass';
 -- flush privileges;
 FLUSH PRIVILEGES;
+
+USE snippetbox;
+
+-- Create a `sessions` table
+CREATE TABLE sessions (
+    token CHAR(43) PRIMARY KEY,
+    data BLOB NOT NULL,
+    expiry TIMESTAMP(6) NOT NULL
+);
+
+-- Add an index on the created column.
+CREATE INDEX sessions_expiry_idx ON sessions (expiry);
