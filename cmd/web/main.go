@@ -51,6 +51,11 @@ func main() {
 	sessionManager := scs.New()
 	sessionManager.Store = mysqlstore.New(db)
 	sessionManager.Lifetime = 12 * time.Hour
+	// Make sure that the Secure attribute is set on our session cookies.
+	// Setting this means that the cookie will only be sent by a user's web
+	// browser when a HTTPS connection is being used (and won't be sent over an
+	// unsecure HTTP connection).
+	sessionManager.Cookie.Secure = true
 
 	app := &application{
 		logger:         logger,
@@ -60,21 +65,18 @@ func main() {
 		sessionManager: sessionManager,
 	}
 
-	// Initialize a new http.Server struct. We set the Addr and Handler fields so
-	// that the server uses the same network address and routes as before.
 	srv := &http.Server{
-		Addr:    *addr,
-		Handler: app.routes(),
-		// Create a *log.Logger from our structured logger handler, which writes
-		// log entries at Error level, and assign it to the ErrorLog field. If
-		// you would prefer to log the server errors at Warn level instead, you
-		// could pass slog.LevelWarn as the final parameter.
+		Addr:     *addr,
+		Handler:  app.routes(),
 		ErrorLog: slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 
 	logger.Info("starting server", "addr", srv.Addr)
 
-	err = srv.ListenAndServe()
+	// Use the ListenAndServeTLS() method to start the HTTPS server. We
+	// pass in the paths to the TLS certificate and corresponding private key as
+	// the two parameters.
+	err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
 	logger.Error(err.Error())
 	os.Exit(1)
 }
