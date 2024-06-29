@@ -2,6 +2,8 @@
 
 {{define "main"}}
 <form action='/snippet/create' method='POST'>
+    <!-- Include the CSRF token -->
+    <input type='hidden' name='csrf_token' value='{{.CSRFToken}}'>
     <div>
         <label>Title:</label>
         <!-- Use the `with` action to render the value of .Form.FieldErrors.title if it is not empty. -->
