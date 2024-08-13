@@ -10,6 +10,12 @@ import (
 	"golang.org/x/crypto/bcrypt"     // New import
 )
 
+type UserModelInterface interface {
+	Insert(name, email, password string) error
+	Authenticate(email, password string) (int, error)
+	Exists(id int) (bool, error)
+}
+
 // Define a new User struct. Notice how the field names and types align
 // with the columns in the database "users" table?
 type User struct {
