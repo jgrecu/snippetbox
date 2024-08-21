@@ -1,6 +1,6 @@
 module snippetbox.jgrecu.eu
 
-go 1.22
+go 1.23
 
 require (
 	github.com/alexedwards/scs/mysqlstore v0.0.0-20240316134038-7e11d57e8885
