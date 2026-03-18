@@ -1,10 +1,10 @@
 {{define "nav"}}
  <nav>
     <div>
-        <a href='/'>Home</a>
+        <a href='/' {{if eq .CurrentPath "/"}}class='live'{{end}}>Home</a>
         <!-- Toggle the link based on authentication status -->
         {{if .IsAuthenticated}}
-            <a href='/snippet/create'>Create snippet</a>
+            <a href='/snippet/create' {{if eq .CurrentPath "/snippet/create"}}class='live'{{end}}>Create snippet</a>
         {{end}}
     </div>
     <div>
@@ -16,8 +16,8 @@
                 <button>Logout</button>
             </form>
         {{else}}
-            <a href='/user/signup'>Signup</a>
-            <a href='/user/login'>Login</a>
+            <a href='/user/signup' {{if eq .CurrentPath "/user/signup"}}class='live'{{end}}>Signup</a>
+            <a href='/user/login' {{if eq .CurrentPath "/user/login"}}class='live'{{end}}>Login</a>
         {{end}}
     </div>
 </nav>
