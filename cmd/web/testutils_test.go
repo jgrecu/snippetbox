@@ -2,14 +2,15 @@ package main
 
 import (
 	"bytes"
-	"io"
 	"html"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,16 +24,16 @@ import (
 var csrfTokenRX = regexp.MustCompile(`<input type='hidden' name='csrf_token' value='(.+)'>`)
 
 func extractCSRFToken(t *testing.T, body string) string {
-    // Use the FindStringSubmatch method to extract the token from the HTML body.
-    // Note that this returns an array with the entire matched pattern in the
-    // first position, and the values of any captured data in the subsequent
-    // positions.
-    matches := csrfTokenRX.FindStringSubmatch(body)
-    if len(matches) < 2 {
-        t.Fatal("no csrf token found in body")
-    }
+	// Use the FindStringSubmatch method to extract the token from the HTML body.
+	// Note that this returns an array with the entire matched pattern in the
+	// first position, and the values of any captured data in the subsequent
+	// positions.
+	matches := csrfTokenRX.FindStringSubmatch(body)
+	if len(matches) < 2 {
+		t.Fatal("no csrf token found in body")
+	}
 
-    return html.UnescapeString(matches[1])
+	return html.UnescapeString(matches[1])
 }
 
 // Create a newTestApplication helper which returns an instance of our
@@ -121,19 +122,32 @@ func (ts *testServer) get(t *testing.T, urlPath string) (int, http.Header, strin
 // final parameter to this method is a url.Values object which can contain any
 // form data that you want to send in the request body.
 func (ts *testServer) postForm(t *testing.T, urlPath string, form url.Values) (int, http.Header, string) {
-    rs, err := ts.Client().PostForm(ts.URL+urlPath, form)
-    if err != nil {
-        t.Fatal(err)
-    }
+	// Create a new POST request with the form data
+	req, err := http.NewRequest(http.MethodPost, ts.URL+urlPath, strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-    // Read the response body from the test server.
-    defer rs.Body.Close()
-    body, err := io.ReadAll(rs.Body)
-    if err != nil {
-        t.Fatal(err)
-    }
-    body = bytes.TrimSpace(body)
+	// Set the Content-Type header for form data
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-    // Return the response status, headers and body.
-    return rs.StatusCode, rs.Header, string(body)
+	// Set the Referer header to match the server URL (required by nosurf v1.2.0 for HTTPS)
+	req.Header.Set("Referer", ts.URL+urlPath)
+
+	// Send the request using the test server client
+	rs, err := ts.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Read the response body from the test server.
+	defer rs.Body.Close()
+	body, err := io.ReadAll(rs.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body = bytes.TrimSpace(body)
+
+	// Return the response status, headers and body.
+	return rs.StatusCode, rs.Header, string(body)
 }

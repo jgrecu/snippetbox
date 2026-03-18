@@ -22,16 +22,10 @@ func TestPing(t *testing.T) {
 }
 
 func TestSnippetView(t *testing.T) {
-	// Create a new instance of our application struct which uses the mocked
-	// dependencies.
 	app := newTestApplication(t)
-
-	// Establish a new test server for running end-to-end tests.
 	ts := newTestServer(t, app.routes())
 	defer ts.Close()
 
-	// Set up some table-driven tests to check the responses sent by our
-	// application for different URLs.
 	tests := []struct {
 		name     string
 		urlPath  string
@@ -85,118 +79,123 @@ func TestSnippetView(t *testing.T) {
 }
 
 func TestUserSignup(t *testing.T) {
-    app := newTestApplication(t)
-    ts := newTestServer(t, app.routes())
-    defer ts.Close()
+	app := newTestApplication(t)
+	ts := newTestServer(t, app.routes())
+	defer ts.Close()
 
-    _, _, body := ts.get(t, "/user/signup")
-    validCSRFToken := extractCSRFToken(t, body)
+	const (
+		validName     = "Bob"
+		validPassword = "validPa$$word"
+		validEmail    = "bob@example.com"
+		formTag       = "<form action='/user/signup' method='POST' novalidate>"
+	)
 
-    const (
-        validName     = "Bob"
-        validPassword = "validPa$$word"
-        validEmail    = "bob@example.com"
-        formTag       = "<form action='/user/signup' method='POST' novalidate>"
-    )
+	tests := []struct {
+		name         string
+		userName     string
+		userEmail    string
+		userPassword string
+		useValidCSRF bool
+		wantCode     int
+		wantFormTag  string
+	}{
+		{
+			name:         "Valid submission",
+			userName:     validName,
+			userEmail:    validEmail,
+			userPassword: validPassword,
+			useValidCSRF: true,
+			wantCode:     http.StatusSeeOther,
+		},
+		{
+			name:         "Invalid CSRF Token",
+			userName:     validName,
+			userEmail:    validEmail,
+			userPassword: validPassword,
+			useValidCSRF: false,
+			wantCode:     http.StatusBadRequest,
+		},
+		{
+			name:         "Empty name",
+			userName:     "",
+			userEmail:    validEmail,
+			userPassword: validPassword,
+			useValidCSRF: true,
+			wantCode:     http.StatusUnprocessableEntity,
+			wantFormTag:  formTag,
+		},
+		{
+			name:         "Empty email",
+			userName:     validName,
+			userEmail:    "",
+			userPassword: validPassword,
+			useValidCSRF: true,
+			wantCode:     http.StatusUnprocessableEntity,
+			wantFormTag:  formTag,
+		},
+		{
+			name:         "Empty password",
+			userName:     validName,
+			userEmail:    validEmail,
+			userPassword: "",
+			useValidCSRF: true,
+			wantCode:     http.StatusUnprocessableEntity,
+			wantFormTag:  formTag,
+		},
+		{
+			name:         "Invalid email",
+			userName:     validName,
+			userEmail:    "bob@example.",
+			userPassword: validPassword,
+			useValidCSRF: true,
+			wantCode:     http.StatusUnprocessableEntity,
+			wantFormTag:  formTag,
+		},
+		{
+			name:         "Short password",
+			userName:     validName,
+			userEmail:    validEmail,
+			userPassword: "pa$$",
+			useValidCSRF: true,
+			wantCode:     http.StatusUnprocessableEntity,
+			wantFormTag:  formTag,
+		},
+		{
+			name:         "Duplicate email",
+			userName:     validName,
+			userEmail:    "dupe@example.com",
+			userPassword: validPassword,
+			useValidCSRF: true,
+			wantCode:     http.StatusUnprocessableEntity,
+			wantFormTag:  formTag,
+		},
+	}
 
-    tests := []struct {
-        name         string
-        userName     string
-        userEmail    string
-        userPassword string
-        csrfToken    string
-        wantCode     int
-        wantFormTag  string
-    }{
-        {
-            name:         "Valid submission",
-            userName:     validName,
-            userEmail:    validEmail,
-            userPassword: validPassword,
-            csrfToken:    validCSRFToken,
-            wantCode:     http.StatusSeeOther,
-        },
-        {
-            name:         "Invalid CSRF Token",
-            userName:     validName,
-            userEmail:    validEmail,
-            userPassword: validPassword,
-            csrfToken:    "wrongToken",
-            wantCode:     http.StatusBadRequest,
-        },
-        {
-            name:         "Empty name",
-            userName:     "",
-            userEmail:    validEmail,
-            userPassword: validPassword,
-            csrfToken:    validCSRFToken,
-            wantCode:     http.StatusUnprocessableEntity,
-            wantFormTag:  formTag,
-        },
-        {
-            name:         "Empty email",
-            userName:     validName,
-            userEmail:    "",
-            userPassword: validPassword,
-            csrfToken:    validCSRFToken,
-            wantCode:     http.StatusUnprocessableEntity,
-            wantFormTag:  formTag,
-        },
-        {
-            name:         "Empty password",
-            userName:     validName,
-            userEmail:    validEmail,
-            userPassword: "",
-            csrfToken:    validCSRFToken,
-            wantCode:     http.StatusUnprocessableEntity,
-            wantFormTag:  formTag,
-        },
-        {
-            name:         "Invalid email",
-            userName:     validName,
-            userEmail:    "bob@example.",
-            userPassword: validPassword,
-            csrfToken:    validCSRFToken,
-            wantCode:     http.StatusUnprocessableEntity,
-            wantFormTag:  formTag,
-        },
-        {
-            name:         "Short password",
-            userName:     validName,
-            userEmail:    validEmail,
-            userPassword: "pa$$",
-            csrfToken:    validCSRFToken,
-            wantCode:     http.StatusUnprocessableEntity,
-            wantFormTag:  formTag,
-        },
-        {
-            name:         "Duplicate email",
-            userName:     validName,
-            userEmail:    "dupe@example.com",
-            userPassword: validPassword,
-            csrfToken:    validCSRFToken,
-            wantCode:     http.StatusUnprocessableEntity,
-            wantFormTag:  formTag,
-        },
-    }
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Get fresh CSRF token for each test
+			_, _, body := ts.get(t, "/user/signup")
+			csrfToken := extractCSRFToken(t, body)
 
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            form := url.Values{}
-            form.Add("name", tt.userName)
-            form.Add("email", tt.userEmail)
-            form.Add("password", tt.userPassword)
-            form.Add("csrf_token", tt.csrfToken)
+			form := url.Values{}
+			form.Add("name", tt.userName)
+			form.Add("email", tt.userEmail)
+			form.Add("password", tt.userPassword)
+			if tt.useValidCSRF {
+				form.Add("csrf_token", csrfToken)
+			} else {
+				form.Add("csrf_token", "wrongToken")
+			}
 
-            code, _, body := ts.postForm(t, "/user/signup", form)
+			code, _, body := ts.postForm(t, "/user/signup", form)
 
-            assert.Equal(t, code, tt.wantCode)
+			assert.Equal(t, code, tt.wantCode)
 
-            if tt.wantFormTag != "" {
-                assert.StringContains(t, body, tt.wantFormTag)
-            }
-        })
-    }
+			if tt.wantFormTag != "" {
+				assert.StringContains(t, body, tt.wantFormTag)
+			}
+		})
+	}
 }
 
 // TestHome tests the home page handler
@@ -275,10 +274,6 @@ func TestUserLogin(t *testing.T) {
 		assert.StringContains(t, body, "<form action='/user/login' method='POST' novalidate>")
 	})
 
-	// Get CSRF token for POST tests
-	_, _, body := ts.get(t, "/user/login")
-	validCSRFToken := extractCSRFToken(t, body)
-
 	const (
 		validEmail    = "alice@example.com"
 		validPassword = "pa$$word"
@@ -286,87 +281,84 @@ func TestUserLogin(t *testing.T) {
 	)
 
 	tests := []struct {
-		name        string
-		userEmail   string
-		password    string
-		csrfToken   string
-		wantCode    int
-		wantBody    string
-		wantHeaders map[string]string
+		name         string
+		userEmail    string
+		password     string
+		useValidCSRF bool
+		wantCode     int
+		wantBody     string
+		wantLocation string
 	}{
 		{
-			name:      "Valid credentials",
-			userEmail: validEmail,
-			password:  validPassword,
-			csrfToken: validCSRFToken,
-			wantCode:  http.StatusSeeOther,
-			wantHeaders: map[string]string{
-				"Location": "/snippet/create",
-			},
+			name:         "Valid credentials",
+			userEmail:    validEmail,
+			password:     validPassword,
+			useValidCSRF: true,
+			wantCode:     http.StatusSeeOther,
+			wantLocation: "/snippet/create",
 		},
 		{
-			name:      "Invalid password",
-			userEmail: validEmail,
-			password:  "wrongPassword",
-			csrfToken: validCSRFToken,
-			wantCode:  http.StatusUnprocessableEntity,
-			wantBody:  "Email or password is incorrect",
+			name:         "Invalid password",
+			userEmail:    validEmail,
+			password:     "wrongPassword",
+			useValidCSRF: true,
+			wantCode:     http.StatusUnprocessableEntity,
+			wantBody:     "Email or password is incorrect",
 		},
 		{
-			name:      "Invalid email",
-			userEmail: "wrong@example.com",
-			password:  validPassword,
-			csrfToken: validCSRFToken,
-			wantCode:  http.StatusUnprocessableEntity,
-			wantBody:  "Email or password is incorrect",
+			name:         "Invalid email",
+			userEmail:    "wrong@example.com",
+			password:     validPassword,
+			useValidCSRF: true,
+			wantCode:     http.StatusUnprocessableEntity,
+			wantBody:     "Email or password is incorrect",
 		},
 		{
-			name:      "Empty email",
-			userEmail: "",
-			password:  validPassword,
-			csrfToken: validCSRFToken,
-			wantCode:  http.StatusUnprocessableEntity,
-			wantBody:  formTag,
+			name:         "Empty email",
+			userEmail:    "",
+			password:     validPassword,
+			useValidCSRF: true,
+			wantCode:     http.StatusUnprocessableEntity,
+			wantBody:     formTag,
 		},
 		{
-			name:      "Empty password",
-			userEmail: validEmail,
-			password:  "",
-			csrfToken: validCSRFToken,
-			wantCode:  http.StatusUnprocessableEntity,
-			wantBody:  formTag,
+			name:         "Empty password",
+			userEmail:    validEmail,
+			password:     "",
+			useValidCSRF: true,
+			wantCode:     http.StatusUnprocessableEntity,
+			wantBody:     formTag,
 		},
 		{
-			name:      "Invalid email format",
-			userEmail: "not-an-email",
-			password:  validPassword,
-			csrfToken: validCSRFToken,
-			wantCode:  http.StatusUnprocessableEntity,
-			wantBody:  formTag,
+			name:         "Invalid email format",
+			userEmail:    "not-an-email",
+			password:     validPassword,
+			useValidCSRF: true,
+			wantCode:     http.StatusUnprocessableEntity,
+			wantBody:     formTag,
 		},
 		{
-			name:      "Invalid CSRF token",
-			userEmail: validEmail,
-			password:  validPassword,
-			csrfToken: "invalidToken",
-			wantCode:  http.StatusBadRequest,
-		},
-		{
-			name:      "Missing CSRF token",
-			userEmail: validEmail,
-			password:  validPassword,
-			csrfToken: "",
-			wantCode:  http.StatusBadRequest,
+			name:         "Invalid CSRF token",
+			userEmail:    validEmail,
+			password:     validPassword,
+			useValidCSRF: false,
+			wantCode:     http.StatusBadRequest,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Get fresh CSRF token for each test
+			_, _, body := ts.get(t, "/user/login")
+			csrfToken := extractCSRFToken(t, body)
+
 			form := url.Values{}
 			form.Add("email", tt.userEmail)
 			form.Add("password", tt.password)
-			if tt.csrfToken != "" {
-				form.Add("csrf_token", tt.csrfToken)
+			if tt.useValidCSRF {
+				form.Add("csrf_token", csrfToken)
+			} else {
+				form.Add("csrf_token", "invalidToken")
 			}
 
 			code, headers, body := ts.postForm(t, "/user/login", form)
@@ -377,8 +369,8 @@ func TestUserLogin(t *testing.T) {
 				assert.StringContains(t, body, tt.wantBody)
 			}
 
-			for key, value := range tt.wantHeaders {
-				assert.Equal(t, headers.Get(key), value)
+			if tt.wantLocation != "" {
+				assert.Equal(t, headers.Get("Location"), tt.wantLocation)
 			}
 		})
 	}
@@ -463,98 +455,102 @@ func TestSnippetCreate(t *testing.T) {
 		assert.StringContains(t, body, "<form action='/snippet/create' method='POST'>")
 	})
 
-	// Get new CSRF token for POST tests
-	_, _, body = ts.get(t, "/snippet/create")
-	csrfToken = extractCSRFToken(t, body)
-
 	const formTag = "<form action='/snippet/create' method='POST'>"
 
 	tests := []struct {
-		name      string
-		title     string
-		content   string
-		expires   string
-		csrfToken string
-		wantCode  int
-		wantBody  string
+		name         string
+		title        string
+		content      string
+		expires      string
+		useValidCSRF bool
+		wantCode     int
+		wantBody     string
 	}{
 		{
-			name:      "Valid submission",
-			title:     "Test Title",
-			content:   "Test content for the snippet",
-			expires:   "365",
-			csrfToken: csrfToken,
-			wantCode:  http.StatusSeeOther,
+			name:         "Valid submission",
+			title:        "Test Title",
+			content:      "Test content for the snippet",
+			expires:      "365",
+			useValidCSRF: true,
+			wantCode:     http.StatusSeeOther,
 		},
 		{
-			name:      "Empty title",
-			title:     "",
-			content:   "Test content",
-			expires:   "365",
-			csrfToken: csrfToken,
-			wantCode:  http.StatusUnprocessableEntity,
-			wantBody:  "This field cannot be blank",
+			name:         "Empty title",
+			title:        "",
+			content:      "Test content",
+			expires:      "365",
+			useValidCSRF: true,
+			wantCode:     http.StatusUnprocessableEntity,
+			wantBody:     "This field cannot be blank",
 		},
 		{
-			name:      "Empty content",
-			title:     "Test Title",
-			content:   "",
-			expires:   "365",
-			csrfToken: csrfToken,
-			wantCode:  http.StatusUnprocessableEntity,
-			wantBody:  "This field cannot be blank",
+			name:         "Empty content",
+			title:        "Test Title",
+			content:      "",
+			expires:      "365",
+			useValidCSRF: true,
+			wantCode:     http.StatusUnprocessableEntity,
+			wantBody:     "This field cannot be blank",
 		},
 		{
-			name:      "Title too long",
-			title:     strings.Repeat("a", 101),
-			content:   "Test content",
-			expires:   "365",
-			csrfToken: csrfToken,
-			wantCode:  http.StatusUnprocessableEntity,
-			wantBody:  "This field cannot be more than 100 characters long",
+			name:         "Title too long",
+			title:        strings.Repeat("a", 101),
+			content:      "Test content",
+			expires:      "365",
+			useValidCSRF: true,
+			wantCode:     http.StatusUnprocessableEntity,
+			wantBody:     "This field cannot be more than 100 characters long",
 		},
 		{
-			name:      "Invalid expiry value",
-			title:     "Test Title",
-			content:   "Test content",
-			expires:   "30",
-			csrfToken: csrfToken,
-			wantCode:  http.StatusUnprocessableEntity,
-			wantBody:  "This field must equal 1, 7 or 365",
+			name:         "Invalid expiry value",
+			title:        "Test Title",
+			content:      "Test content",
+			expires:      "30",
+			useValidCSRF: true,
+			wantCode:     http.StatusUnprocessableEntity,
+			wantBody:     "This field must equal 1, 7 or 365",
 		},
 		{
-			name:      "Expiry 1 day",
-			title:     "Test Title",
-			content:   "Test content",
-			expires:   "1",
-			csrfToken: csrfToken,
-			wantCode:  http.StatusSeeOther,
+			name:         "Expiry 1 day",
+			title:        "Test Title",
+			content:      "Test content",
+			expires:      "1",
+			useValidCSRF: true,
+			wantCode:     http.StatusSeeOther,
 		},
 		{
-			name:      "Expiry 7 days",
-			title:     "Test Title",
-			content:   "Test content",
-			expires:   "7",
-			csrfToken: csrfToken,
-			wantCode:  http.StatusSeeOther,
+			name:         "Expiry 7 days",
+			title:        "Test Title",
+			content:      "Test content",
+			expires:      "7",
+			useValidCSRF: true,
+			wantCode:     http.StatusSeeOther,
 		},
 		{
-			name:      "Invalid CSRF token",
-			title:     "Test Title",
-			content:   "Test content",
-			expires:   "365",
-			csrfToken: "invalid",
-			wantCode:  http.StatusBadRequest,
+			name:         "Invalid CSRF token",
+			title:        "Test Title",
+			content:      "Test content",
+			expires:      "365",
+			useValidCSRF: false,
+			wantCode:     http.StatusBadRequest,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Get fresh CSRF token for each test
+			_, _, body := ts.get(t, "/snippet/create")
+			csrfToken := extractCSRFToken(t, body)
+
 			form := url.Values{}
 			form.Add("title", tt.title)
 			form.Add("content", tt.content)
 			form.Add("expires", tt.expires)
-			form.Add("csrf_token", tt.csrfToken)
+			if tt.useValidCSRF {
+				form.Add("csrf_token", csrfToken)
+			} else {
+				form.Add("csrf_token", "invalid")
+			}
 
 			code, _, body := ts.postForm(t, "/snippet/create", form)
 

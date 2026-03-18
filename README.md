@@ -12,7 +12,7 @@ A secure, full-featured web application for sharing text snippets, built with Go
 
 ## Tech Stack
 
-- **Go 1.24** - Backend language
+- **Go 1.26** - Backend language
 - **MySQL** - Database for snippets, users, and sessions
 - **HTML Templates** - Server-side rendering with Go's `html/template`
 - **TLS/HTTPS** - Encrypted connections with modern cipher suites
@@ -60,7 +60,7 @@ snippetbox/
 
 ### Prerequisites
 
-- Go 1.24 or later
+- Go 1.26 or later
 - MySQL 8.0 or later
 
 ### Database Setup
