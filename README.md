@@ -12,7 +12,7 @@ A secure, full-featured web application for sharing text snippets, built with Go
 
 ## Tech Stack
 
-- **Go 1.26** - Backend language
+- **Go 1.26.1** - Backend language
 - **MySQL** - Database for snippets, users, and sessions
 - **HTML Templates** - Server-side rendering with Go's `html/template`
 - **TLS/HTTPS** - Encrypted connections with modern cipher suites
@@ -60,7 +60,7 @@ snippetbox/
 
 ### Prerequisites
 
-- Go 1.26 or later
+- Go 1.26.1 or later
 - MySQL 8.0 or later
 
 ### Database Setup
@@ -114,7 +114,7 @@ Generate self-signed certificates for local development:
 ```bash
 mkdir -p tls
 cd tls
-go run /usr/local/go/src/crypto/tls/generate_cert.go --rsa-bits=2048 --host=localhost
+go run "$(go env GOROOT)/src/crypto/tls/generate_cert.go" --rsa-bits=2048 --host=localhost
 ```
 
 ### Running the Application
